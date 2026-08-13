@@ -1,0 +1,313 @@
+/* SIEM Dashboard Dark Cybersecurity Theme */
+:root {
+    /* Primary palette */
+    --bg-dark: #0a0e17;
+    --sidebar-bg: #121824;
+    --card-bg: #1a1f2b;
+    --border-color: #1e293b;
+    --text-primary: #e0e6f1;
+    --text-muted: #a0a8b7;
+    --accent-blue: #0d6efd;  /* Bootstrap primary */
+    --accent-purple: #8a2be2;
+    --critical-red: #ff3e3e;
+    --high-amber: #ffb300;
+    --medium-green: #4caf50;
+    --low-cyan: #00bcd4;
+    --info-gray: #b0bec5;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100%;
+    background: var(--sidebar-bg);
+    backdrop-filter: blur(8px);
+    box-shadow: 2px 0 8px rgba(0,0,0,0.4);
+    padding-top: 60px; /* space for top navbar */
+    overflow-y: auto;
+}
+.sidebar a {
+    display: block;
+    padding: 12px 20px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+    font-size: 0.95rem;
+}
+.sidebar a:hover {
+    background: var(--card-bg);
+    color: var(--text-primary);
+}
+.sidebar a.active {
+    background: var(--accent-purple);
+    color: #fff;
+}
+
+/* Top navigation bar */
+.top-nav {
+    position: fixed;
+    top: 0;
+    left: 250px;
+    right: 0;
+    height: 60px;
+    background: rgba(18,24,36,0.95);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    z-index: 1000;
+}
+.top-nav .brand {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent-blue);
+    margin-right: auto;
+}
+.top-nav .threat-score {
+    background: var(--critical-red);
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: #fff;
+    font-weight: 500;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,62,62,0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(255,62,62,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,62,62,0); }
+}
+
+/* Main Content */
+.main-content {
+    margin-left: 250px;
+    margin-top: 60px;
+    padding: 20px;
+    min-height: calc(100vh - 60px);
+}
+
+/* Card component */
+.dashboard-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+}
+.dashboard-card:hover {
+    transform: translateY(-4px);
+}
+.card-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+.card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-purple);
+}
+
+/* Chart canvas container */
+.chart-wrapper {
+    position: relative;
+    height: 350px;
+    margin-top: 20px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+}
+
+/* Table styling */
+.table-responsive {
+    background: var(--card-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.table thead {
+    background: var(--sidebar-bg);
+    color: var(--text-primary);
+}
+.table tbody tr:hover {
+    background: rgba(255,255,255,0.05);
+}
+.table td, .table th {
+    border-color: var(--border-color) !important;
+    vertical-align: middle;
+}
+
+/* Status badges */
+.badge-critical { background: var(--critical-red); color: #fff; }
+.badge-high { background: var(--high-amber); color: #fff; }
+.badge-medium { background: var(--medium-green); color: #fff; }
+.badge-low { background: var(--low-cyan); color: #fff; }
+.badge-info { background: var(--info-gray); color: #fff; }
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+    .sidebar { width: 200px; }
+    .top-nav { left: 200px; }
+    .main-content { margin-left: 200px; }
+}
+@media (max-width: 768px) {
+    .sidebar { display: none; }
+    .top-nav { left: 0; }
+    .main-content { margin-left: 0; }
+}
+
+/* Custom Cyberpunk Additions */
+.text-cyan { color: #00bcd4 !important; }
+.text-purple { color: #8a2be2 !important; }
+.text-orange { color: #ff9f40 !important; }
+
+/* Cyber buttons */
+.btn-cyber-primary {
+    background: linear-gradient(135deg, #8a2be2, #0d6efd);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    box-shadow: 0 0 10px rgba(138, 43, 226, 0.4);
+    transition: all 0.3s ease;
+}
+.btn-cyber-primary:hover {
+    background: linear-gradient(135deg, #0d6efd, #8a2be2);
+    box-shadow: 0 0 18px rgba(13, 110, 253, 0.6);
+    transform: scale(1.02);
+    color: #fff;
+}
+.btn-outline-cyan {
+    border: 1px solid #00bcd4;
+    color: #00bcd4;
+    background: transparent;
+    transition: all 0.2s ease;
+}
+.btn-outline-cyan:hover {
+    background: #00bcd4;
+    color: #0a0e17;
+    box-shadow: 0 0 12px rgba(0, 188, 212, 0.4);
+}
+
+/* Card Glows */
+.border-glow-blue {
+    border: 1px solid rgba(13, 110, 253, 0.3) !important;
+    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.1);
+}
+.border-glow-blue:hover {
+    border-color: rgba(13, 110, 253, 0.7) !important;
+    box-shadow: 0 4px 20px rgba(13, 110, 253, 0.25);
+}
+.border-glow-purple {
+    border: 1px solid rgba(138, 43, 226, 0.3) !important;
+    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.1);
+}
+.border-glow-purple:hover {
+    border-color: rgba(138, 43, 226, 0.7) !important;
+    box-shadow: 0 4px 20px rgba(138, 43, 226, 0.25);
+}
+.border-glow-red {
+    border: 1px solid rgba(255, 62, 62, 0.3) !important;
+    box-shadow: 0 4px 15px rgba(255, 62, 62, 0.1);
+}
+.border-glow-red:hover {
+    border-color: rgba(255, 62, 62, 0.7) !important;
+    box-shadow: 0 4px 20px rgba(255, 62, 62, 0.25);
+}
+.border-glow-amber {
+    border: 1px solid rgba(255, 179, 0, 0.3) !important;
+    box-shadow: 0 4px 15px rgba(255, 179, 0, 0.1);
+}
+.border-glow-amber:hover {
+    border-color: rgba(255, 179, 0, 0.7) !important;
+    box-shadow: 0 4px 20px rgba(255, 179, 0, 0.25);
+}
+.border-glow-green {
+    border: 1px solid rgba(76, 175, 80, 0.3) !important;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.1);
+}
+.border-glow-green:hover {
+    border-color: rgba(76, 175, 80, 0.7) !important;
+    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.25);
+}
+.border-glow-critical {
+    border: 1px solid rgba(255, 62, 62, 0.4) !important;
+    box-shadow: 0 4px 15px rgba(255, 62, 62, 0.15);
+}
+
+/* Console card on homepage */
+.hero-card {
+    background: #0f141d;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.red-dot { background-color: #ff5f56; }
+.orange-dot { background-color: #ffbd2e; }
+.green-dot { background-color: #27c93f; }
+.console-body {
+    background-color: #05080c;
+    border-radius: 4px;
+    padding: 15px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    border: 1px solid #121824;
+}
+
+/* Blinking items */
+.blink {
+    animation: blinker 1.5s linear infinite;
+}
+.blink-fast {
+    animation: blinker 0.8s linear infinite;
+}
+@keyframes blinker {
+    50% { opacity: 0; }
+}
+
+/* Background card variants */
+.bg-dark-card {
+    background: #141923;
+}
+
+/* Top nav score types */
+.threat-low {
+    background: var(--medium-green) !important;
+}
+.threat-warning {
+    background: var(--high-amber) !important;
+    color: #1a1f2b !important;
+}
+.threat-danger {
+    background: var(--critical-red) !important;
+    animation: pulse 1.5s infinite;
+}
+
+/* Border on large layout */
+@media (min-width: 992px) {
+    .border-start-lg {
+        border-start: 1px solid var(--border-color);
+    }
+}
+
