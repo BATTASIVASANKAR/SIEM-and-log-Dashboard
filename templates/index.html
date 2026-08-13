@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Home - SIEM Log Monitoring Dashboard{% endblock %}
+{% block content %}
+<div class="row align-items-center py-5">
+    <div class="col-lg-7">
+        <h1 class="display-4 fw-bold text-light mb-3">
+            <span class="text-cyan"><i class="bi bi-shield-lock-fill me-2"></i>SIEM</span> Log Monitoring Dashboard
+        </h1>
+        <p class="lead text-secondary mb-4">
+            Aggregates, correlates, and analyzes security telemetry across enterprise firewalls, servers, endpoints, and application runtimes.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-cyber-primary btn-lg px-4 py-3">
+                <i class="bi bi-speedometer2 me-2"></i>Launch Control Center
+            </a>
+            <a href="{{ url_for('logs_page') }}" class="btn btn-outline-cyan btn-lg px-4 py-3">
+                <i class="bi bi-terminal me-2"></i>Inspect Syslogs
+            </a>
+        </div>
+    </div>
+    <div class="col-lg-5 mt-5 mt-lg-0">
+        <div class="hero-card p-4">
+            <div class="hero-card-header d-flex align-items-center mb-4">
+                <div class="dot red-dot"></div>
+                <div class="dot orange-dot"></div>
+                <div class="dot green-dot"></div>
+                <span class="ms-3 text-muted small">security_operations_console.sh</span>
+            </div>
+            <div class="console-body font-monospace text-success">
+                <p class="mb-1"><span class="text-cyan">$</span> ./initialize_siem.sh</p>
+                <p class="mb-1 text-muted">[INFO] Establishing secure SQLite DB session...</p>
+                <p class="mb-1 text-muted">[INFO] Listening for syslog feeds on ports 514 (UDP/TCP)...</p>
+                <p class="mb-1 text-muted">[INFO] Successfully aggregated 6 active device channels.</p>
+                <p class="mb-3 text-warning">[WARN] Potential reconnaissance port scan detected from IP 185.220.101.5</p>
+                <p class="mb-1"><span class="text-cyan">$</span> tail -n 2 security_alerts.log</p>
+                <p class="mb-1 text-danger">[CRITICAL] 22:14:02 - Ransomware activity blocked on Endpoint: ceo-pc</p>
+                <p class="mb-0 text-success">[OK] Threat assessment score active and running.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5 text-center g-4">
+    <div class="col-md-4">
+        <div class="dashboard-card h-100 border-glow-blue">
+            <div class="icon-wrapper mb-3 text-cyan fs-2">
+                <i class="bi bi-cpu"></i>
+            </div>
+            <h4>Real-time Collection</h4>
+            <p class="text-muted small">Ingest live telemetry from Firewalls, Servers, Endpoints, and Applications with microsecond accuracy.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="dashboard-card h-100 border-glow-amber">
+            <div class="icon-wrapper mb-3 text-warning fs-2">
+                <i class="bi bi-bell-fill"></i>
+            </div>
+            <h4>Dynamic Alerting</h4>
+            <p class="text-muted small">Identify, classify, and prioritize critical security alerts dynamically based on structured severity algorithms.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="dashboard-card h-100 border-glow-purple">
+            <div class="icon-wrapper mb-3 text-purple fs-2">
+                <i class="bi bi-graph-up-arrow"></i>
+            </div>
+            <h4>Analytical Insights</h4>
+            <p class="text-muted small">Generate interactive Chart.js visualizations tracking event distributions, timeline trends, and endpoint metrics.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

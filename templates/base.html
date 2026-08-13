@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}SIEM Dashboard{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="sidebar-header px-4 py-3">
+            <span class="fs-5 fw-bold text-light"><i class="bi bi-shield-fill-check text-success me-2"></i>SIEM Portal</span>
+        </div>
+        <a href="{{ url_for('index') }}" class="{% if request.path == '/' %}active{% endif %}">
+            <i class="bi bi-house-door me-2"></i>Home
+        </a>
+        <a href="{{ url_for('dashboard') }}" class="{% if request.path.startswith('/dashboard') %}active{% endif %}">
+            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </a>
+        <a href="{{ url_for('logs_page') }}" class="{% if request.path.startswith('/logs') %}active{% endif %}">
+            <i class="bi bi-file-earmark-text me-2"></i>Log Monitoring
+        </a>
+        <a href="{{ url_for('alerts_page') }}" class="{% if request.path.startswith('/alerts') %}active{% endif %}">
+            <i class="bi bi-exclamation-triangle me-2"></i>Security Alerts
+        </a>
+        <a href="{{ url_for('analytics_page') }}" class="{% if request.path.startswith('/analytics') %}active{% endif %}">
+            <i class="bi bi-graph-up me-2"></i>Analytics
+        </a>
+        <a href="{{ url_for('incidents_page') }}" class="{% if request.path.startswith('/incidents') %}active{% endif %}">
+            <i class="bi bi-shield-slash me-2"></i>Incident Monitoring
+        </a>
+    </nav>
+
+    <!-- Top Navigation Bar -->
+    <header class="top-nav d-flex align-items-center">
+        <div class="brand"><i class="bi bi-activity me-2"></i>SIEM Log Monitoring Dashboard</div>
+        <div class="threat-score ms-auto" id="topThreatScore">Threat Score: --</div>
+        <div class="ms-3 text-muted" id="clock"></div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content container-fluid">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Custom Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Update threat score globally
+        function updateGlobalStats() {
+            fetch('/api/stats')
+                .then(r => r.json())
+                .then(data => {
+                    const ts = document.getElementById('topThreatScore');
+                    if (ts) {
+                        ts.textContent = `Threat Score: ${data.threat_score}`;
+                        if (data.threat_score > 50) {
+                            ts.className = 'threat-score ms-auto threat-danger';
+                        } else if (data.threat_score > 20) {
+                            ts.className = 'threat-score ms-auto threat-warning';
+                        } else {
+                            ts.className = 'threat-score ms-auto threat-low';
+                        }
+                    }
+                })
+                .catch(err => console.error('Error fetching stats:', err));
+        }
+
+        // Clock function
+        function updateClock() {
+            const clock = document.getElementById('clock');
+            if (clock) {
+                const now = new Date();
+                clock.textContent = now.toISOString().replace('T', ' ').substring(0, 19);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateGlobalStats();
+            updateClock();
+            setInterval(updateGlobalStats, 10000);
+            setInterval(updateClock, 1000);
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

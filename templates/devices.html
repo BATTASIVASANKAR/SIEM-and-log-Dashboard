@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Devices - SIEM{% endblock %}
+{% block extra_head %}
+<style>
+  .device-card { margin-bottom: 1rem; }
+</style>
+{% endblock %}
+{% block content %}
+<h2 class="mb-4">Devices</h2>
+<div class="row" id="devicesContainer">
+  <!-- Devices will be populated by JS -->
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function loadDevices(){
+  fetch('/api/devices')
+    .then(r=>r.json())
+    .then(data=>{
+      const container=document.getElementById('devicesContainer');
+      container.innerHTML='';
+      data.forEach(dev=>{
+        const col=document.createElement('div');
+        col.className='col-md-4';
+        col.innerHTML=`
+          <div class='card device-card'>
+            <div class='card-body'>
+              <h5 class='card-title'>${dev.name}</h5>
+              <p class='card-text'>Type: ${dev.type}<br>IP: ${dev.ip_address}<br>Status: ${dev.status}</p>
+              <button class='btn btn-sm btn-primary me-2' onclick="deviceAction('${dev.name}','restart')">Restart</button>
+              <button class='btn btn-sm btn-secondary' onclick="deviceAction('${dev.name}','ping')">Ping</button>
+            </div>
+          </div>`;
+        container.appendChild(col);
+      });
+    })
+    .catch(err=>console.error('Devices fetch error',err));
+}
+function deviceAction(name,action){
+  fetch('/api/devices/action',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name,action})
+  }).then(r=>r.json()).then(()=>loadDevices());
+}
+document.addEventListener('DOMContentLoaded',loadDevices);
+</script>
+{% endblock %}

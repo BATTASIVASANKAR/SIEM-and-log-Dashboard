@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+{% block title %}Operations Dashboard - SIEM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-speedometer2 text-purple me-2"></i>Operations Dashboard</h2>
+    <div class="badge bg-outline border border-success text-success px-3 py-2">
+        <i class="bi bi-circle-fill me-1 small blink"></i>SYSTEM STATUS: SECURE
+    </div>
+</div>
+
+<!-- 6 Stats Cards Grid -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4 col-lg-2">
+        <div class="dashboard-card text-center border-glow-blue h-100">
+            <div class="card-title">Total Logs</div>
+            <div class="card-value text-cyan" id="totalLogs">--</div>
+            <div class="text-muted small mt-2"><i class="bi bi-database me-1"></i>Aggregated</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="dashboard-card text-center border-glow-red h-100">
+            <div class="card-title text-danger">Critical Alerts</div>
+            <div class="card-value text-danger blink-fast" id="criticalAlerts">--</div>
+            <div class="text-muted small mt-2"><i class="bi bi-shield-fire me-1"></i>Immediate Action</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="dashboard-card text-center border-glow-amber h-100">
+            <div class="card-title text-warning">Warning Alerts</div>
+            <div class="card-value text-warning" id="warningAlerts">--</div>
+            <div class="text-muted small mt-2"><i class="bi bi-exclamation-triangle me-1"></i>High/Medium Priority</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="dashboard-card text-center border-glow-purple h-100">
+            <div class="card-title">Information Logs</div>
+            <div class="card-value text-purple" id="infoLogs">--</div>
+            <div class="text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>Low/Info Severity</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="dashboard-card text-center border-glow-green h-100">
+            <div class="card-title">Active Devices</div>
+            <div class="card-value text-success" id="activeDevices">--</div>
+            <div class="text-muted small mt-2"><i class="bi bi-cpu-fill me-1"></i>Nodes Online</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2">
+        <div class="dashboard-card text-center border-glow-blue h-100">
+            <div class="card-title">System Status</div>
+            <div class="d-flex align-items-center justify-content-center gap-2 mt-2">
+                <div class="spinner-grow text-success" role="status" style="width: 1.2rem; height: 1.2rem;"></div>
+                <span class="fw-bold text-success fs-5">ONLINE</span>
+            </div>
+            <div class="text-muted small mt-2" id="systemHealthDetails">CPU: -- | RAM: --</div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Row: Recent Events & Active Devices -->
+<div class="row g-4 mb-4">
+    <!-- Recent Events Column -->
+    <div class="col-lg-8">
+        <div class="dashboard-card h-100 border-glow-blue">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="m-0"><i class="bi bi-journal-text me-2 text-cyan"></i>Recent Security Events</h5>
+                <a href="{{ url_for('logs_page') }}" class="btn btn-sm btn-outline-cyan px-3">View All Logs</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0 align-middle" id="recentLogsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 18%;">Time</th>
+                            <th style="width: 22%;">Host</th>
+                            <th style="width: 15%;">Severity</th>
+                            <th style="width: 15%;">Category</th>
+                            <th style="width: 30%;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">Loading live syslog feed...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Active Devices & Host Health Column -->
+    <div class="col-lg-4">
+        <div class="dashboard-card h-100 border-glow-purple">
+            <h5 class="mb-3"><i class="bi bi-hdd-network me-2 text-purple"></i>System Status Nodes</h5>
+            <div id="devicesContainer" class="d-flex flex-column gap-3">
+                <div class="text-center py-4 text-muted">Retrieving network topology...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Row: Analytics Visualizations -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="dashboard-card border-glow-blue">
+            <h5><i class="bi bi-pie-chart-fill me-2 text-cyan"></i>Security Alert Severity Distribution</h5>
+            <div class="chart-wrapper">
+                <canvas id="alertsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="dashboard-card border-glow-purple">
+            <h5><i class="bi bi-graph-up me-2 text-purple"></i>Event Feed Timeline (Last 20 Events)</h5>
+            <div class="chart-wrapper">
+                <canvas id="logsOverTimeChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let alertsChartObj = null;
+let timelineChartObj = null;
+
+function getSeverityBadge(severity) {
+    const sev = severity.toLowerCase();
+    if (sev === 'critical') return '<span class="badge badge-critical px-2 py-1">Critical</span>';
+    if (sev === 'high') return '<span class="badge badge-high px-2 py-1">High</span>';
+    if (sev === 'medium') return '<span class="badge badge-medium px-2 py-1">Medium</span>';
+    if (sev === 'low') return '<span class="badge badge-low px-2 py-1">Low</span>';
+    return '<span class="badge badge-info px-2 py-1">Info</span>';
+}
+
+function loadDashboardData() {
+    // 1. Fetch Stats
+    fetch('/api/stats')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('totalLogs').textContent = data.total_logs;
+            document.getElementById('criticalAlerts').textContent = data.critical_alerts;
+            document.getElementById('warningAlerts').textContent = data.warning_alerts;
+            document.getElementById('infoLogs').textContent = data.info_logs;
+            document.getElementById('activeDevices').textContent = data.active_devices;
+            document.getElementById('systemHealthDetails').textContent = `CPU: ${data.cpu_avg}% | RAM: ${data.ram_avg}%`;
+            
+            renderAlertsChart(data.alerts);
+        })
+        .catch(err => console.error('Dashboard stats API error:', err));
+
+    // 2. Fetch Recent Logs
+    fetch('/api/logs/live')
+        .then(r => r.json())
+        .then(logs => {
+            const tbody = document.querySelector('#recentLogsTable tbody');
+            tbody.innerHTML = '';
+            
+            // Limit to 6 logs for display
+            const displayLogs = logs.slice(0, 6);
+            if (displayLogs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No logs received in system.</td></tr>';
+                return;
+            }
+
+            displayLogs.forEach(l => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-monospace text-muted small">${l.timestamp.substring(11)}</td>
+                    <td><span class="text-light fw-semibold">${l.hostname}</span></td>
+                    <td>${getSeverityBadge(l.severity)}</td>
+                    <td><span class="badge bg-dark border border-secondary text-light px-2 py-1">${l.category}</span></td>
+                    <td class="small text-secondary text-truncate" style="max-width: 250px;" title="${l.description}">${l.description}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            renderTimelineChart(logs);
+        })
+        .catch(err => console.error('Dashboard live logs API error:', err));
+
+    // 3. Fetch Devices
+    fetch('/api/devices')
+        .then(r => r.json())
+        .then(devices => {
+            const container = document.getElementById('devicesContainer');
+            container.innerHTML = '';
+            
+            devices.forEach(d => {
+                const devDiv = document.createElement('div');
+                devDiv.className = 'd-flex align-items-center justify-content-between p-2 rounded bg-dark-card border border-secondary';
+                
+                const statusColor = d.status === 'Online' ? 'text-success' : 'text-danger';
+                const cpuClass = d.cpu_usage > 85 ? 'bg-danger' : d.cpu_usage > 60 ? 'bg-warning' : 'bg-success';
+                
+                devDiv.innerHTML = `
+                    <div style="width: 50%;">
+                        <div class="fw-semibold text-light small"><i class="bi bi-hdd-rack me-1 text-muted"></i>${d.name}</div>
+                        <div class="text-muted small">${d.ip_address} | ${d.type}</div>
+                    </div>
+                    <div style="width: 35%;" class="pe-2">
+                        <div class="d-flex justify-content-between text-muted" style="font-size: 0.75rem;">
+                            <span>CPU ${d.cpu_usage}%</span>
+                            <span>RAM ${d.ram_usage}%</span>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar ${cpuClass}" style="width: ${d.cpu_usage}%"></div>
+                        </div>
+                    </div>
+                    <div style="width: 15%;" class="text-end">
+                        <span class="small font-bold ${statusColor}"><i class="bi bi-circle-fill me-1 small blink"></i>${d.status}</span>
+                    </div>
+                `;
+                container.appendChild(devDiv);
+            });
+        })
+        .catch(err => console.error('Dashboard devices API error:', err));
+}
+
+function renderAlertsChart(alerts) {
+    const ctx = document.getElementById('alertsChart').getContext('2d');
+    
+    const labels = ['Critical', 'High', 'Medium', 'Low', 'Info'];
+    const values = labels.map(l => alerts[l] || 0);
+    
+    if (alertsChartObj) {
+        alertsChartObj.data.datasets[0].data = values;
+        alertsChartObj.update();
+        return;
+    }
+    
+    alertsChartObj = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: ['#ff3e3e', '#ff9f40', '#ffb300', '#00bcd4', '#a0a8b7'],
+                borderColor: '#1a1f2b',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { color: '#e0e6f1', font: { family: 'Inter', size: 11 } }
+                }
+            }
+        }
+    });
+}
+
+function renderTimelineChart(logs) {
+    const ctx = document.getElementById('logsOverTimeChart').getContext('2d');
+    
+    // Build hourly frequency counts of the last 20 logs
+    const timelineData = {};
+    logs.slice().reverse().forEach(l => {
+        const timeStr = l.timestamp.substring(11, 16); // HH:MM
+        timelineData[timeStr] = (timelineData[timeStr] || 0) + 1;
+    });
+    
+    const labels = Object.keys(timelineData);
+    const values = labels.map(k => timelineData[k]);
+    
+    if (timelineChartObj) {
+        timelineChartObj.data.labels = labels;
+        timelineChartObj.data.datasets[0].data = values;
+        timelineChartObj.update();
+        return;
+    }
+    
+    timelineChartObj = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Activity Rate',
+                data: values,
+                borderColor: '#8a2be2',
+                backgroundColor: 'rgba(138, 43, 226, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#1e293b' },
+                    ticks: { color: '#a0a8b7', font: { family: 'Inter' } }
+                },
+                y: {
+                    grid: { color: '#1e293b' },
+                    ticks: { color: '#a0a8b7', font: { family: 'Inter' }, stepSize: 1 },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboardData();
+    // Ingest feeds every 8 seconds
+    setInterval(loadDashboardData, 8000);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% block title %}Log Monitoring - SIEM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-file-earmark-text text-cyan me-2"></i>Log Monitoring</h2>
+    <span class="badge bg-secondary px-3 py-2" id="logCountBadge">0 Logs Loaded</span>
+</div>
+
+<!-- Filters Panel -->
+<div class="dashboard-card mb-4 border-glow-blue">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label for="severityFilter" class="form-label small text-muted">Severity</label>
+            <select id="severityFilter" class="form-select bg-dark text-light border-secondary">
+                <option value="">All Severities</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+                <option value="Info">Info</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="categoryFilter" class="form-label small text-muted">Event Type (Category)</label>
+            <select id="categoryFilter" class="form-select bg-dark text-light border-secondary">
+                <option value="">All Categories</option>
+                <option value="Authentication">Authentication</option>
+                <option value="Network">Network</option>
+                <option value="Malware">Malware</option>
+                <option value="System">System</option>
+                <option value="Access">Access</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="deviceFilter" class="form-label small text-muted">Device (Hostname)</label>
+            <select id="deviceFilter" class="form-select bg-dark text-light border-secondary">
+                <option value="">All Devices</option>
+                <option value="fw-01.corp.local">fw-01.corp.local (Firewall)</option>
+                <option value="ad-dc-01.corp.local">ad-dc-01.corp.local (Server)</option>
+                <option value="web-prod-01.corp.local">web-prod-01.corp.local (Server)</option>
+                <option value="endpoint-ceo.corp.local">endpoint-ceo.corp.local (Endpoint)</option>
+                <option value="border-router.corp.local">border-router.corp.local (Router)</option>
+                <option value="app-portal.corp.local">app-portal.corp.local (Application)</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="searchInput" class="form-label small text-muted">Search Logs</label>
+            <div class="input-group">
+                <span class="input-group-text bg-dark text-secondary border-secondary"><i class="bi bi-search"></i></span>
+                <input type="text" id="searchInput" class="form-control bg-dark text-light border-secondary" placeholder="IP, process, user...">
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-end gap-2 mt-3">
+        <button id="resetFilters" class="btn btn-outline-secondary px-4"><i class="bi bi-x-circle me-1"></i>Reset</button>
+        <button id="applyFilters" class="btn btn-cyber-primary px-4"><i class="bi bi-funnel me-1"></i>Filter</button>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="table-responsive">
+    <table class="table table-dark table-hover mb-0 align-middle" id="logsTable">
+        <thead class="table-dark-header">
+            <tr>
+                <th style="width: 15%;">Timestamp</th>
+                <th style="width: 20%;">Device</th>
+                <th style="width: 15%;">Source IP</th>
+                <th style="width: 12%;">Severity</th>
+                <th style="width: 13%;">Event Type</th>
+                <th style="width: 25%;">Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-cyan me-2" role="status"></div>
+                    Retrieving telemetry feeds...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted small" id="paginationInfo">
+        Showing 0 to 0 of 0 entries
+    </div>
+    <nav>
+        <ul class="pagination pagination-sm mb-0 bg-dark text-light" id="paginationNav">
+            <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+            <li class="page-item disabled"><a class="page-link" href="#">Next</a></li>
+        </ul>
+    </nav>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let currentPage = 1;
+const perPage = 20;
+
+function getSeverityBadge(severity) {
+    const sev = severity.toLowerCase();
+    if (sev === 'critical') return '<span class="badge badge-critical px-2 py-1">Critical</span>';
+    if (sev === 'high') return '<span class="badge badge-high px-2 py-1">High</span>';
+    if (sev === 'medium') return '<span class="badge badge-medium px-2 py-1">Medium</span>';
+    if (sev === 'low') return '<span class="badge badge-low px-2 py-1">Low</span>';
+    return '<span class="badge badge-info px-2 py-1">Info</span>';
+}
+
+function loadLogs(page = 1) {
+    currentPage = page;
+    const severity = document.getElementById('severityFilter').value;
+    const category = document.getElementById('categoryFilter').value;
+    const hostname = document.getElementById('deviceFilter').value;
+    const search = document.getElementById('searchInput').value;
+
+    let url = `/api/logs/filter?page=${page}&per_page=${perPage}`;
+    if (severity) url += `&severity=${encodeURIComponent(severity)}`;
+    if (category) url += `&category=${encodeURIComponent(category)}`;
+    if (hostname) url += `&hostname=${encodeURIComponent(hostname)}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    const tbody = document.querySelector('#logsTable tbody');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" class="text-center py-4 text-muted">
+                <div class="spinner-border spinner-border-sm text-cyan me-2" role="status"></div>
+                Updating telemetry stream...
+            </td>
+        </tr>
+    `;
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            tbody.innerHTML = '';
+            
+            document.getElementById('logCountBadge').textContent = `${data.total} Logs Logged`;
+
+            if (data.logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No matching logs found in index.</td></tr>';
+                document.getElementById('paginationInfo').textContent = 'Showing 0 to 0 of 0 entries';
+                setupPagination(0);
+                return;
+            }
+
+            data.logs.forEach(l => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-monospace text-muted small">${l.timestamp}</td>
+                    <td>
+                        <div class="fw-semibold">${l.hostname}</div>
+                        <div class="text-muted small">${l.device_type}</div>
+                    </td>
+                    <td class="font-monospace">${l.source_ip}</td>
+                    <td>${getSeverityBadge(l.severity)}</td>
+                    <td><span class="badge bg-outline border border-secondary text-light px-2 py-1">${l.category}</span></td>
+                    <td class="small text-secondary">${l.description}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const startIdx = (currentPage - 1) * perPage + 1;
+            const endIdx = Math.min(currentPage * perPage, data.total);
+            document.getElementById('paginationInfo').textContent = `Showing ${startIdx} to ${endIdx} of ${data.total} entries`;
+            setupPagination(data.total);
+        })
+        .catch(err => {
+            console.error('Error loading filtered logs:', err);
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Failed to fetch logs. Please try again.</td></tr>';
+        });
+}
+
+function setupPagination(totalItems) {
+    const totalPages = Math.ceil(totalItems / perPage);
+    const nav = document.getElementById('paginationNav');
+    nav.innerHTML = '';
+
+    // Prev Button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">Previous</a>`;
+    nav.appendChild(prevLi);
+
+    // Dynamic Pages
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>`;
+        nav.appendChild(li);
+    }
+
+    // Next Button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">Next</a>`;
+    nav.appendChild(nextLi);
+}
+
+function changePage(page) {
+    if (page < 1) return;
+    loadLogs(page);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadLogs();
+    
+    document.getElementById('applyFilters').addEventListener('click', () => loadLogs(1));
+    document.getElementById('resetFilters').addEventListener('click', () => {
+        document.getElementById('severityFilter').value = '';
+        document.getElementById('categoryFilter').value = '';
+        document.getElementById('deviceFilter').value = '';
+        document.getElementById('searchInput').value = '';
+        loadLogs(1);
+    });
+    
+    // Live update every 15 seconds if on page 1 and filters are empty
+    setInterval(() => {
+        const severity = document.getElementById('severityFilter').value;
+        const category = document.getElementById('categoryFilter').value;
+        const hostname = document.getElementById('deviceFilter').value;
+        const search = document.getElementById('searchInput').value;
+        if (currentPage === 1 && !severity && !category && !hostname && !search) {
+            loadLogs(1);
+        }
+    }, 15000);
+});
+</script>
+{% endblock %}

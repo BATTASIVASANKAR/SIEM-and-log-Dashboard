@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}Security Alerts - SIEM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-exclamation-triangle text-warning me-2"></i>Security Alerts Log</h2>
+    <span class="badge bg-warning text-dark px-3 py-2" id="alertsCountBadge">0 Alerts</span>
+</div>
+
+<!-- Filter controls -->
+<div class="dashboard-card mb-4 border-glow-amber">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label for="statusFilter" class="form-label small text-muted">Alert Status</label>
+            <select id="statusFilter" class="form-select bg-dark text-light border-secondary">
+                <option value="">All Statuses</option>
+                <option value="New">New</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label for="severityFilter" class="form-label small text-muted">Alert Severity</label>
+            <select id="severityFilter" class="form-select bg-dark text-light border-secondary">
+                <option value="">All Severities</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts Feed -->
+<div id="alertsContainer" class="d-flex flex-column gap-3">
+    <div class="text-center py-5 text-muted">
+        <div class="spinner-border text-warning mb-2" role="status"></div>
+        <div>Tuning SIEM Alert Aggregator...</div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function getSeverityBadge(severity) {
+    const sev = severity.toLowerCase();
+    if (sev === 'critical') return '<span class="badge badge-critical px-2 py-1">Critical</span>';
+    if (sev === 'high') return '<span class="badge badge-high px-2 py-1">High</span>';
+    if (sev === 'medium') return '<span class="badge badge-medium px-2 py-1">Medium</span>';
+    return '<span class="badge badge-low px-2 py-1">Low</span>';
+}
+
+function getStatusBadge(status) {
+    const s = status.toLowerCase();
+    if (s === 'new') return '<span class="badge bg-danger text-light px-2 py-1">New</span>';
+    if (s === 'in progress') return '<span class="badge bg-warning text-dark px-2 py-1">In Progress</span>';
+    return '<span class="badge bg-success text-light px-2 py-1">Resolved</span>';
+}
+
+function loadAlerts() {
+    const selectedStatus = document.getElementById('statusFilter').value;
+    const selectedSeverity = document.getElementById('severityFilter').value;
+    const container = document.getElementById('alertsContainer');
+
+    fetch('/api/alerts')
+        .then(r => r.json())
+        .then(data => {
+            container.innerHTML = '';
+            
+            // Apply client-side filtering
+            let filteredData = data;
+            if (selectedStatus) {
+                filteredData = filteredData.filter(a => a.status === selectedStatus);
+            }
+            if (selectedSeverity) {
+                filteredData = filteredData.filter(a => a.severity === selectedSeverity);
+            }
+
+            document.getElementById('alertsCountBadge').textContent = `${filteredData.length} Alerts Detected`;
+
+            if (filteredData.length === 0) {
+                container.innerHTML = '<div class="dashboard-card text-center py-5 text-muted">No security alerts logged matching criteria.</div>';
+                return;
+            }
+
+            filteredData.forEach(alert => {
+                const card = document.createElement('div');
+                card.className = `dashboard-card border-glow-${alert.severity.toLowerCase() === 'critical' ? 'red' : 'amber'} mb-1`;
+                
+                card.innerHTML = `
+                    <div class="row align-items-center">
+                        <div class="col-lg-8">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                ${getSeverityBadge(alert.severity)}
+                                ${getStatusBadge(alert.status)}
+                                <span class="text-muted font-monospace small">${alert.timestamp}</span>
+                            </div>
+                            <h5 class="text-light mb-1">${alert.title}</h5>
+                            <p class="text-secondary small mb-0">${alert.description}</p>
+                        </div>
+                        <div class="col-lg-4 mt-3 mt-lg-0 border-start-lg border-secondary ps-lg-4">
+                            <div class="mb-2">
+                                <label class="small text-muted mb-1 d-block">Assigned Analyst</label>
+                                <select class="form-select form-select-sm bg-dark text-light border-secondary" 
+                                        onchange="updateAlert(${alert.id}, this.value, '${alert.status}')">
+                                    <option value="Unassigned" ${alert.assigned_to === 'Unassigned' ? 'selected' : ''}>Unassigned</option>
+                                    <option value="Analyst Alpha" ${alert.assigned_to === 'Analyst Alpha' ? 'selected' : ''}>Analyst Alpha</option>
+                                    <option value="Analyst Beta" ${alert.assigned_to === 'Analyst Beta' ? 'selected' : ''}>Analyst Beta</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="small text-muted mb-1 d-block">Remediation Status</label>
+                                <div class="btn-group btn-group-sm w-100" role="group">
+                                    <button class="btn btn-outline-danger ${alert.status === 'New' ? 'active' : ''}" 
+                                            onclick="updateAlert(${alert.id}, '${alert.assigned_to}', 'New')">New</button>
+                                    <button class="btn btn-outline-warning ${alert.status === 'In Progress' ? 'active' : ''}" 
+                                            onclick="updateAlert(${alert.id}, '${alert.assigned_to}', 'In Progress')">Work</button>
+                                    <button class="btn btn-outline-success ${alert.status === 'Resolved' ? 'active' : ''}" 
+                                            onclick="updateAlert(${alert.id}, '${alert.assigned_to}', 'Resolved')">Resolve</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        })
+        .catch(err => {
+            console.error('Error loading security alerts:', err);
+            container.innerHTML = '<div class="dashboard-card text-center py-5 text-danger"><i class="bi bi-exclamation-octagon fs-1 d-block mb-2"></i>Failed to fetch security alerts.</div>';
+        });
+}
+
+function updateAlert(id, assignedTo, status) {
+    fetch('/api/alerts/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id: id,
+            status: status,
+            assigned_to: assignedTo
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadAlerts();
+        }
+    })
+    .catch(err => console.error('Error updating alert status:', err));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadAlerts();
+    document.getElementById('statusFilter').addEventListener('change', loadAlerts);
+    document.getElementById('severityFilter').addEventListener('change', loadAlerts);
+    
+    // Auto-update feed every 10 seconds
+    setInterval(loadAlerts, 10000);
+});
+</script>
+{% endblock %}

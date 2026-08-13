@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% block title %}Incident Monitoring - SIEM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-shield-slash text-danger me-2"></i>Incident Monitoring</h2>
+    <span class="badge bg-danger px-3 py-2" id="incidentCountBadge">0 Active Incidents</span>
+</div>
+
+<!-- Incident Summary Stats -->
+<div class="row mb-4 g-3">
+    <div class="col-md-4">
+        <div class="dashboard-card border-glow-red d-flex align-items-center justify-content-between">
+            <div>
+                <div class="card-title">Critical Incidents</div>
+                <div class="card-value text-danger" id="criticalIncidentsCount">0</div>
+            </div>
+            <div class="fs-1 text-danger opacity-50"><i class="bi bi-radioactive"></i></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="dashboard-card border-glow-amber d-flex align-items-center justify-content-between">
+            <div>
+                <div class="card-title">Active Investigations</div>
+                <div class="card-value text-warning" id="activeIncidentsCount">0</div>
+            </div>
+            <div class="fs-1 text-warning opacity-50"><i class="bi bi-search-heart"></i></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="dashboard-card border-glow-green d-flex align-items-center justify-content-between">
+            <div>
+                <div class="card-title">Mitigated Today</div>
+                <div class="card-value text-success" id="mitigatedIncidentsCount">0</div>
+            </div>
+            <div class="fs-1 text-success opacity-50"><i class="bi bi-shield-fill-check"></i></div>
+        </div>
+    </div>
+</div>
+
+<!-- Incidents List -->
+<div class="dashboard-card border-glow-red">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="m-0 text-light"><i class="bi bi-list-stars me-2"></i>Security Incidents Feed</h5>
+        <div>
+            <select id="statusFilter" class="form-select bg-dark text-light border-secondary form-select-sm" style="width: 200px;">
+                <option value="">All Statuses</option>
+                <option value="New">New</option>
+                <option value="Under Investigation">Under Investigation</option>
+                <option value="Mitigated">Mitigated</option>
+                <option value="False Positive">False Positive</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0 align-middle" id="incidentsTable">
+            <thead>
+                <tr>
+                    <th style="width: 15%;">Timestamp</th>
+                    <th style="width: 18%;">Incident Title</th>
+                    <th style="width: 12%;">Target Host</th>
+                    <th style="width: 12%;">Source IP</th>
+                    <th style="width: 10%;">Severity</th>
+                    <th style="width: 15%;">Status</th>
+                    <th style="width: 18%;" class="text-end">Remediation Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                        <div class="spinner-border spinner-border-sm text-danger me-2" role="status"></div>
+                        Fetching alert logs...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function getSeverityBadge(severity) {
+    const sev = severity.toLowerCase();
+    if (sev === 'critical') return '<span class="badge badge-critical px-2 py-1">Critical</span>';
+    if (sev === 'high') return '<span class="badge badge-high px-2 py-1">High</span>';
+    if (sev === 'medium') return '<span class="badge badge-medium px-2 py-1">Medium</span>';
+    return '<span class="badge badge-low px-2 py-1">Low</span>';
+}
+
+function getStatusBadge(status) {
+    const s = status.toLowerCase();
+    if (s === 'new') return '<span class="badge bg-danger text-light px-2 py-1"><i class="bi bi-bell-fill me-1"></i>New</span>';
+    if (s === 'under investigation') return '<span class="badge bg-warning text-dark px-2 py-1"><i class="bi bi-hourglass-split me-1"></i>Investigating</span>';
+    if (s === 'mitigated') return '<span class="badge bg-success text-light px-2 py-1"><i class="bi bi-shield-fill-check me-1"></i>Mitigated</span>';
+    return '<span class="badge bg-secondary text-light px-2 py-1">False Positive</span>';
+}
+
+function loadIncidents() {
+    const selectedStatus = document.getElementById('statusFilter').value;
+    const tbody = document.querySelector('#incidentsTable tbody');
+
+    fetch('/api/incidents')
+        .then(r => r.json())
+        .then(data => {
+            tbody.innerHTML = '';
+            
+            // Calculate stats
+            let critical = 0;
+            let active = 0;
+            let mitigated = 0;
+            
+            data.forEach(inc => {
+                if (inc.severity === 'Critical') critical++;
+                if (inc.status === 'New' || inc.status === 'Under Investigation') active++;
+                if (inc.status === 'Mitigated') mitigated++;
+            });
+            
+            document.getElementById('criticalIncidentsCount').textContent = critical;
+            document.getElementById('activeIncidentsCount').textContent = active;
+            document.getElementById('mitigatedIncidentsCount').textContent = mitigated;
+            document.getElementById('incidentCountBadge').textContent = `${active} Active Incidents`;
+
+            // Filter data
+            const filteredData = selectedStatus ? data.filter(inc => inc.status === selectedStatus) : data;
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No incidents match the current criteria.</td></tr>';
+                return;
+            }
+
+            filteredData.forEach(inc => {
+                const tr = document.createElement('tr');
+                let actionButtons = '';
+                
+                if (inc.status !== 'Mitigated' && inc.status !== 'False Positive') {
+                    actionButtons = `
+                        <div class="btn-group btn-group-sm float-end">
+                            ${inc.status === 'New' ? `<button class="btn btn-outline-warning" onclick="incidentAction(${inc.id}, 'investigate')"><i class="bi bi-search"></i> Investigate</button>` : ''}
+                            <button class="btn btn-outline-success" onclick="incidentAction(${inc.id}, 'mitigate')"><i class="bi bi-shield-check"></i> Mitigate</button>
+                            <button class="btn btn-outline-secondary" onclick="incidentAction(${inc.id}, 'dismiss')"><i class="bi bi-slash-circle"></i> Dismiss</button>
+                        </div>
+                    `;
+                } else {
+                    actionButtons = `<span class="text-muted small float-end"><i class="bi bi-check-all text-success me-1"></i>Remediated</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="font-monospace text-muted small">${inc.timestamp}</td>
+                    <td>
+                        <div class="fw-semibold text-light">${inc.title}</div>
+                        <div class="text-secondary small d-none d-md-block">${inc.description}</div>
+                    </td>
+                    <td><span class="badge bg-dark border border-secondary text-muted px-2 py-1">${inc.hostname || 'N/A'}</span></td>
+                    <td class="font-monospace">${inc.source_ip || 'N/A'}</td>
+                    <td>${getSeverityBadge(inc.severity)}</td>
+                    <td>${getStatusBadge(inc.status)}</td>
+                    <td>${actionButtons}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            console.error('Error loading incidents:', err);
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Failed to fetch security incidents feeds.</td></tr>';
+        });
+}
+
+function incidentAction(id, action) {
+    fetch('/api/incidents/action', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id, action })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadIncidents();
+        }
+    })
+    .catch(err => console.error('Remediation post error:', err));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadIncidents();
+    document.getElementById('statusFilter').addEventListener('change', loadIncidents);
+    setInterval(loadIncidents, 10000);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% block title %}Security Analytics - SIEM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-graph-up-arrow text-purple me-2"></i>Security Analytics</h2>
+    <button class="btn btn-outline-cyan btn-sm" onclick="loadAnalyticsData()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh Analytics</button>
+</div>
+
+<div class="row g-4">
+    <!-- Log Severity Distribution (Pie/Doughnut Chart) -->
+    <div class="col-md-6">
+        <div class="dashboard-card border-glow-blue h-100">
+            <h5 class="mb-3 text-light"><i class="bi bi-pie-chart text-cyan me-2"></i>Log Severity Distribution</h5>
+            <div class="chart-wrapper">
+                <canvas id="logSeverityChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Timeline (Line Chart) -->
+    <div class="col-md-6">
+        <div class="dashboard-card border-glow-purple h-100">
+            <h5 class="mb-3 text-light"><i class="bi bi-activity text-purple me-2"></i>Event Timeline (7-Day Volume)</h5>
+            <div class="chart-wrapper">
+                <canvas id="eventTimelineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Activity (Horizontal Bar Chart) -->
+    <div class="col-md-6">
+        <div class="dashboard-card border-glow-blue h-100">
+            <h5 class="mb-3 text-light"><i class="bi bi-bar-chart-steps text-cyan me-2"></i>Device Activity Level</h5>
+            <div class="chart-wrapper">
+                <canvas id="deviceActivityChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Statistics (Bar/Stacked Chart) -->
+    <div class="col-md-6">
+        <div class="dashboard-card border-glow-purple h-100">
+            <h5 class="mb-3 text-light"><i class="bi bi-grid text-purple me-2"></i>Alert Remediation Statistics</h5>
+            <div class="chart-wrapper">
+                <canvas id="alertStatsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let severityChart = null;
+let timelineChart = null;
+let deviceChart = null;
+let alertChart = null;
+
+function loadAnalyticsData() {
+    fetch('/api/analytics-data')
+        .then(r => r.json())
+        .then(data => {
+            renderSeverityChart(data.severity_distribution);
+            renderTimelineChart(data.timeline);
+            renderDeviceChart(data.device_activity);
+            renderAlertStatsChart(data.alert_statistics);
+        })
+        .catch(err => console.error('Analytics API fetch error:', err));
+}
+
+function renderSeverityChart(raw) {
+    const ctx = document.getElementById('logSeverityChart').getContext('2d');
+    const order = ['Critical', 'High', 'Medium', 'Low', 'Info'];
+    const values = order.map(k => raw[k] || 0);
+
+    if (severityChart) {
+        severityChart.data.datasets[0].data = values;
+        severityChart.update();
+        return;
+    }
+
+    severityChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: order,
+            datasets: [{
+                data: values,
+                backgroundColor: ['#ff3e3e', '#ff9f40', '#ffb300', '#00bcd4', '#b0bec5'],
+                borderColor: '#1a1f2b',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#e0e6f1', font: { family: 'Inter', size: 11 } }
+                }
+            }
+        }
+    });
+}
+
+function renderTimelineChart(raw) {
+    const ctx = document.getElementById('eventTimelineChart').getContext('2d');
+    
+    // Group raw rows (which contain date_val, severity, count) into labels and datasets
+    // Unique sorted dates
+    const dates = [...new Set(raw.map(r => r.date_val))].sort();
+    
+    // Severities we want to plot
+    const severities = ['Critical', 'High', 'Medium', 'Low', 'Info'];
+    const colors = {
+        'Critical': '#ff3e3e',
+        'High': '#ff9f40',
+        'Medium': '#ffb300',
+        'Low': '#00bcd4',
+        'Info': '#b0bec5'
+    };
+
+    const datasets = severities.map(sev => {
+        const data = dates.map(date => {
+            const row = raw.find(r => r.date_val === date && r.severity === sev);
+            return row ? row.cnt : 0;
+        });
+        
+        return {
+            label: sev,
+            data: data,
+            borderColor: colors[sev],
+            backgroundColor: colors[sev] + '22',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false
+        };
+    });
+
+    if (timelineChart) {
+        timelineChart.data.labels = dates;
+        timelineChart.data.datasets = datasets;
+        timelineChart.update();
+        return;
+    }
+
+    timelineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#e0e6f1', font: { family: 'Inter', size: 10 } }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#1e293b' },
+                    ticks: { color: '#a0a8b7', font: { family: 'Inter', size: 9 } }
+                },
+                y: {
+                    grid: { color: '#1e293b' },
+                    ticks: { color: '#a0a8b7', font: { family: 'Inter', size: 9 } },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function renderDeviceChart(raw) {
+    const ctx = document.getElementById('deviceActivityChart').getContext('2d');
+    const labels = Object.keys(raw);
+    const values = labels.map(k => raw[k]);
+
+    if (deviceChart) {
+        deviceChart.data.labels = labels;
+        deviceChart.data.datasets[0].data = values;
+        deviceChart.update();
+        return;
+    }
+
+    deviceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Syslogs Ingested',
+                data: values,
+                backgroundColor: 'rgba(138, 43, 226, 0.6)',
+                borderColor: '#8a2be2',
+                borderWidth: 1.5
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#1e293b' },
+                    ticks: { color: '#a0a8b7', font: { family: 'Inter' } }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#e0e6f1', font: { family: 'Inter' } }
+                }
+            }
+        }
+    });
+}
+
+function renderAlertStatsChart(raw) {
+    const ctx = document.getElementById('alertStatsChart').getContext('2d');
+    
+    // Plot alerts by status: New, In Progress, Resolved
+    const statusLabels = ['New', 'In Progress', 'Resolved'];
+    const statusValues = statusLabels.map(l => raw.status[l] || 0);
+
+    if (alertChart) {
+        alertChart.data.datasets[0].data = statusValues;
+        alertChart.update();
+        return;
+    }
+
+    alertChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                label: 'Alert Incident Status',
+                data: statusValues,
+                backgroundColor: ['#ff3e3e', '#ffb300', '#4caf50'],
+                borderColor: '#1a1f2b',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#e0e6f1', font: { family: 'Inter' } }
+                },
+                y: {
+                    grid: { color: '#1e293b' },
+                    ticks: { color: '#a0a8b7', font: { family: 'Inter' }, stepSize: 1 },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadAnalyticsData();
+    // Auto refresh analytics every 15 seconds
+    setInterval(loadAnalyticsData, 15000);
+});
+</script>
+{% endblock %}
